@@ -80,7 +80,9 @@
     font-size: 13px; line-height: 18px; cursor: pointer; padding: 0;
   }
   li.task.done .cb { border-color: var(--green); background: var(--green); }
-  .txt { flex: 1; font-size: 14.5px; line-height: 1.45; }
+  .txtwrap { flex: 1; cursor: pointer; min-width: 0; }
+  .txt { font-size: 14.5px; line-height: 1.45; }
+  .meta { font-size: 11.5px; color: var(--gold); margin-top: 2px; font-weight: 600; }
   .who {
     font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
     border: none; cursor: pointer; flex-shrink: 0;
@@ -106,6 +108,61 @@
   .foot {
     margin-top: 38px; font-size: 12px; color: var(--muted); line-height: 1.6;
     border-top: 1px solid var(--line); padding-top: 14px;
+  }
+  /* ── Detail view ─────────────────────────────── */
+  .back {
+    display: inline-block; margin-top: 4px; border: none; background: transparent;
+    color: var(--gold); font-weight: 700; font-size: 14px; cursor: pointer; padding: 6px 0;
+  }
+  .d-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-top: 10px; }
+  .d-title {
+    width: 100%; font-family: Georgia, serif; font-size: 21px; font-weight: 700;
+    color: var(--navy); border: none; border-bottom: 2px solid var(--line2);
+    background: transparent; padding: 8px 0; outline: none; margin-top: 4px;
+  }
+  .d-title:focus { border-bottom-color: var(--gold); }
+  .d-status { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .d-status .cb { width: 24px; height: 24px; line-height: 20px; }
+  .d-status .statlbl { font-size: 13.5px; color: var(--slate); }
+  .d-sec { margin-top: 26px; }
+  .d-sec h3 {
+    font-family: Georgia, serif; font-size: 15px; margin: 0 0 4px;
+    border-bottom: 2px solid var(--navy); padding-bottom: 6px;
+  }
+  .d-sec .hint { font-size: 12px; color: var(--muted); margin: 6px 0 10px; }
+  .d-notes {
+    width: 100%; min-height: 92px; padding: 10px 12px; border-radius: 6px;
+    border: 1px solid var(--line2); font-size: 14px; font-family: inherit;
+    color: var(--navy); background: #fff; outline: none; resize: vertical; line-height: 1.5;
+  }
+  .d-notes:focus { border-color: var(--gold); }
+  .entry {
+    display: flex; gap: 8px; align-items: flex-start; padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .entry .pick {
+    border: none; background: transparent; cursor: pointer; font-size: 19px;
+    color: #D6D1C4; padding: 6px 2px 0; flex-shrink: 0; line-height: 1;
+  }
+  .entry .pick.on { color: var(--gold); }
+  .entry .fields { flex: 1; min-width: 0; }
+  .entry input, .entry textarea {
+    width: 100%; border: 1px solid transparent; background: transparent;
+    font-family: inherit; color: var(--navy); outline: none; border-radius: 5px; padding: 5px 7px;
+  }
+  .entry input { font-size: 14.5px; font-weight: 700; }
+  .entry textarea { font-size: 13.5px; color: var(--slate); resize: vertical; min-height: 34px; line-height: 1.45; margin-top: 1px; }
+  .entry input:focus, .entry textarea:focus { border-color: var(--gold); background: #fff; }
+  .entry .del { margin-top: 5px; }
+  .e-addrow { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .e-addrow input, .e-addrow textarea {
+    width: 100%; padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line2);
+    font-size: 13.5px; font-family: inherit; background: #fff; color: var(--navy); outline: none;
+  }
+  .e-addrow input:focus, .e-addrow textarea:focus { border-color: var(--gold); }
+  .e-addrow button {
+    align-self: flex-start; padding: 9px 18px; border-radius: 6px; border: none;
+    background: var(--gold); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer;
   }
   #installbar {
     display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -137,7 +194,7 @@
   </div>
 </div></div>
 
-<div class="toolbar">
+<div class="toolbar" id="toolbar">
   <button class="chip on" data-f="All">All tasks</button>
   <button class="chip" data-f="CK">CK's tasks</button>
   <button class="chip" data-f="Sophia">Sophia's tasks</button>
@@ -147,7 +204,7 @@
   <span class="savenote" id="savenote"></span>
 </div>
 
-<main id="phases"></main>
+<main id="app"></main>
 
 <div id="installbar">
   Install this app on your phone for quick access
@@ -156,9 +213,9 @@
 </div>
 
 <script>
-// ── Data ─────────────────────────────────────────────────────────────
+// ── Seed data ────────────────────────────────────────────────────────
 const SEED = {
-  version: 1,
+  version: 2,
   phases: [
     { id:"p0", name:"Before Keys", dates:"Now – 13 Oct 2026", tasks:[
       { id:"p0-1", text:"Verify MCST 3729 maintenance fee + sinking fund balance", who:"CK", done:false },
@@ -216,17 +273,23 @@ const CYCLE = { CK:"Sophia", Sophia:"Both", Both:"CK" };
 
 let state, filter = "All";
 
+function migrate(s) {
+  s.phases.forEach(p => p.tasks.forEach(t => {
+    if (typeof t.notes !== "string") t.notes = "";
+    if (!Array.isArray(t.items)) t.items = [];
+  }));
+  s.version = 2;
+  return s;
+}
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    state = raw ? JSON.parse(raw) : structuredClone(SEED);
-  } catch { state = structuredClone(SEED); }
+    state = raw ? migrate(JSON.parse(raw)) : migrate(structuredClone(SEED));
+  } catch { state = migrate(structuredClone(SEED)); }
 }
 function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-    flashSave("Saved ✓");
-  } catch { flashSave("Couldn't save", true); }
+  try { localStorage.setItem(KEY, JSON.stringify(state)); flashSave("Saved ✓"); }
+  catch { flashSave("Couldn't save", true); }
 }
 let saveTimer;
 function flashSave(msg, err) {
@@ -236,12 +299,24 @@ function flashSave(msg, err) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => el.textContent = "", 1600);
 }
+let debTimer;
+function saveDebounced() { clearTimeout(debTimer); debTimer = setTimeout(save, 600); }
+
+function findTask(pid, tid) {
+  const p = state.phases.find(x => x.id === pid);
+  return p ? { p, t: p.tasks.find(x => x.id === tid) } : { p: null, t: null };
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// ── Routing ──────────────────────────────────────────────────────────
+function route() {
+  const m = location.hash.match(/^#t\/([^/]+)\/(.+)$/);
+  return m ? { pid: m[1], tid: m[2] } : null;
+}
+window.addEventListener("hashchange", render);
 
 // ── Render ───────────────────────────────────────────────────────────
-function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
-function render() {
-  // counters
+function renderHeader() {
   const now = new Date();
   document.getElementById("dkeys").textContent = Math.max(0, Math.ceil((KEYS - now)/864e5));
   document.getElementById("dmove").textContent = Math.max(0, Math.ceil((MOVE - now)/864e5));
@@ -251,9 +326,18 @@ function render() {
   document.getElementById("pmeta").textContent = done + " of " + all.length + " done";
   document.getElementById("ppct").textContent = pct + "%";
   document.getElementById("pfill").style.width = pct + "%";
+}
 
-  // phases
-  const root = document.getElementById("phases");
+function render() {
+  renderHeader();
+  const r = route();
+  document.getElementById("toolbar").style.display = r ? "none" : "flex";
+  if (r) renderDetail(r.pid, r.tid);
+  else renderList();
+}
+
+function renderList() {
+  const root = document.getElementById("app");
   root.innerHTML = "";
   state.phases.forEach((phase, pi) => {
     const pd = phase.tasks.filter(t => t.done).length;
@@ -267,13 +351,21 @@ function render() {
         <span class="pcount ${pd === phase.tasks.length && phase.tasks.length ? "full":""}">${pd}/${phase.tasks.length}</span>
       </div>
       <ul class="tasks">
-        ${vis.map(t => `
+        ${vis.map(t => {
+          const bits = [];
+          if (t.items.length) bits.push(t.items.length + (t.items.length === 1 ? " entry" : " entries"));
+          if (t.notes.trim()) bits.push("notes");
+          return `
           <li class="task ${t.done ? "done":""}" data-p="${phase.id}" data-t="${t.id}">
             <button class="cb" aria-label="${t.done ? "Mark not done":"Mark done"}">${t.done ? "✓":""}</button>
-            <span class="txt">${esc(t.text)}</span>
+            <div class="txtwrap" title="Open details">
+              <div class="txt">${esc(t.text)}</div>
+              ${bits.length ? `<div class="meta">${bits.join(" · ")} ›</div>` : `<div class="meta" style="color:var(--muted);font-weight:400">tap to add details ›</div>`}
+            </div>
             <button class="who ${t.who}" title="Click to reassign">${t.who}</button>
             <button class="del" aria-label="Delete task" title="Delete">×</button>
-          </li>`).join("")}
+          </li>`;
+        }).join("")}
         ${vis.length === 0 ? `<li class="empty">No tasks for this filter — switch to "All tasks" to see everything.</li>` : ""}
       </ul>
       <div class="addrow">
@@ -285,31 +377,108 @@ function render() {
 
   const foot = document.createElement("p");
   foot.className = "foot";
-  foot.textContent = "Timeline note: 6.5 weeks from keys to move is tight. Landscaping trees and MCST-dependent zip screens are expected to continue past move-in — neither blocks occupancy. Waterproofing must be confirmed before ERV installation. Data is stored on this device; use Export / Import to sync between CK and Sophia.";
+  foot.textContent = "Tap any task to open its detail page — edit the title, keep notes, and log entries (e.g. each contractor and their quote; star the one you pick). Data is stored on this device; use Export / Import to sync between CK and Sophia. Timeline note: waterproofing must be confirmed before ERV installation; trees and MCST-dependent screens may continue past move-in.";
   root.appendChild(foot);
 }
 
-// ── Events (delegated) ───────────────────────────────────────────────
-document.getElementById("phases").addEventListener("click", e => {
+function renderDetail(pid, tid) {
+  const { p, t } = findTask(pid, tid);
+  const root = document.getElementById("app");
+  if (!t) {
+    root.innerHTML = `<button class="back" onclick="location.hash=''">‹ All tasks</button>
+      <p class="empty">This task no longer exists — it may have been deleted.</p>`;
+    return;
+  }
+  root.innerHTML = `
+    <button class="back" id="backBtn">‹ All tasks</button>
+    <div class="d-eyebrow">${esc(p.name)} · ${esc(p.dates)}</div>
+    <input class="d-title" id="dTitle" value="${esc(t.text)}" aria-label="Task title (editable)" />
+    <div class="d-status">
+      <button class="cb ${t.done ? "on":""}" id="dDone" style="${t.done ? "border-color:var(--green);background:var(--green);":""}">${t.done ? "✓":""}</button>
+      <span class="statlbl">${t.done ? "Done" : "Not done yet"}</span>
+      <button class="who ${t.who}" id="dWho" title="Click to reassign">${t.who}</button>
+    </div>
+
+    <div class="d-sec">
+      <h3>Notes</h3>
+      <textarea class="d-notes" id="dNotes" placeholder="Anything worth remembering — decisions, phone numbers, measurements…">${esc(t.notes)}</textarea>
+    </div>
+
+    <div class="d-sec">
+      <h3>Entries</h3>
+      <p class="hint">One row per option or update — e.g. each contractor and their quote. Tap ★ to mark your pick.</p>
+      <div id="entries">
+        ${t.items.map(it => `
+          <div class="entry" data-i="${it.id}">
+            <button class="pick ${it.pick ? "on":""}" title="Mark as chosen">★</button>
+            <div class="fields">
+              <input value="${esc(it.text)}" data-f="text" placeholder="Name (e.g. ABC Contractors)" />
+              <textarea data-f="detail" rows="1" placeholder="Details (e.g. S$120,000 — includes ERV, 6-week schedule)">${esc(it.detail || "")}</textarea>
+            </div>
+            <button class="del" title="Delete entry">×</button>
+          </div>`).join("")}
+        ${t.items.length === 0 ? `<p class="empty">No entries yet.</p>` : ""}
+      </div>
+      <div class="e-addrow">
+        <input id="eName" placeholder="Name (e.g. ABC Contractors)" />
+        <textarea id="eDetail" rows="2" placeholder="Details (e.g. S$120,000 — includes ERV, excludes landscaping, 6 weeks)"></textarea>
+        <button id="eAdd">Add entry</button>
+      </div>
+    </div>`;
+
+  document.getElementById("backBtn").onclick = () => { location.hash = ""; };
+  document.getElementById("dTitle").addEventListener("input", e => { t.text = e.target.value; saveDebounced(); });
+  document.getElementById("dNotes").addEventListener("input", e => { t.notes = e.target.value; saveDebounced(); });
+  document.getElementById("dDone").onclick = () => { t.done = !t.done; save(); render(); };
+  document.getElementById("dWho").onclick = () => { t.who = CYCLE[t.who]; save(); render(); };
+  document.getElementById("eAdd").onclick = () => {
+    const name = document.getElementById("eName").value.trim();
+    const detail = document.getElementById("eDetail").value.trim();
+    if (!name && !detail) return;
+    t.items.push({ id: "e" + Date.now(), text: name, detail, pick: false });
+    save(); render();
+  };
+  const entries = document.getElementById("entries");
+  entries.addEventListener("input", e => {
+    const row = e.target.closest(".entry"); if (!row) return;
+    const it = t.items.find(x => x.id === row.dataset.i); if (!it) return;
+    if (e.target.dataset.f === "text") it.text = e.target.value;
+    if (e.target.dataset.f === "detail") it.detail = e.target.value;
+    saveDebounced();
+  });
+  entries.addEventListener("click", e => {
+    const row = e.target.closest(".entry"); if (!row) return;
+    const it = t.items.find(x => x.id === row.dataset.i); if (!it) return;
+    if (e.target.classList.contains("pick")) { it.pick = !it.pick; save(); render(); }
+    if (e.target.classList.contains("del")) {
+      t.items = t.items.filter(x => x !== it); save(); render();
+    }
+  });
+}
+
+// ── List events (delegated) ──────────────────────────────────────────
+document.getElementById("app").addEventListener("click", e => {
+  if (route()) return; // detail view handles its own events
   const li = e.target.closest("li.task");
   if (li) {
-    const p = state.phases.find(x => x.id === li.dataset.p);
-    const t = p.tasks.find(x => x.id === li.dataset.t);
+    const { p, t } = findTask(li.dataset.p, li.dataset.t);
+    if (!t) return;
     if (e.target.classList.contains("cb")) { t.done = !t.done; save(); render(); return; }
     if (e.target.classList.contains("who")) { t.who = CYCLE[t.who]; save(); render(); return; }
     if (e.target.classList.contains("del")) { p.tasks = p.tasks.filter(x => x !== t); save(); render(); return; }
+    if (e.target.closest(".txtwrap")) { location.hash = "t/" + p.id + "/" + t.id; return; }
   }
   if (e.target.dataset.addbtn) addTask(e.target.dataset.addbtn);
 });
-document.getElementById("phases").addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.dataset.add) addTask(e.target.dataset.add);
+document.getElementById("app").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.dataset && e.target.dataset.add) addTask(e.target.dataset.add);
 });
 function addTask(pid) {
   const input = document.querySelector(`input[data-add="${pid}"]`);
   const text = input.value.trim();
   if (!text) return;
   const p = state.phases.find(x => x.id === pid);
-  p.tasks.push({ id: pid + "-" + Date.now(), text, who: "Both", done: false });
+  p.tasks.push({ id: pid + "-" + Date.now(), text, who: "Both", done: false, notes: "", items: [] });
   save(); render();
   const again = document.querySelector(`input[data-add="${pid}"]`);
   if (again) again.focus();
@@ -341,7 +510,7 @@ document.getElementById("importFile").addEventListener("change", e => {
     try {
       const parsed = JSON.parse(r.result);
       if (!parsed.phases) throw new Error("bad file");
-      state = parsed; save(); render(); flashSave("Imported ✓");
+      state = migrate(parsed); save(); render(); flashSave("Imported ✓");
     } catch { flashSave("That file isn't a valid list", true); }
   };
   r.readAsText(f);
@@ -370,8 +539,7 @@ if ("serviceWorker" in navigator) {
 
 // go
 load(); render();
-// refresh countdowns at midnight-ish
-setInterval(render, 60 * 60 * 1000);
+setInterval(renderHeader, 60 * 60 * 1000);
 </script>
 </body>
 </html>

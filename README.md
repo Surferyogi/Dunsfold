@@ -2,6 +2,9 @@
 
 A shared renovation and move tracker for CK & Sophia. Works offline once installed.
 
+Tap any task to open its detail page: edit the title, keep notes, and log entries
+(e.g. one row per contractor quote — star the one you pick).
+
 ## What's in this folder
 
 | File | Purpose |
