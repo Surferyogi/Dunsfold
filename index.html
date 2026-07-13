@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Dunsfold Renovation &amp; Move</title>
+<meta name="description" content="Shared renovation and move tracker for Dunsfold Residences 3C" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1A2B4A" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Dunsfold" />
+<style>
+  :root {
+    --navy: #1A2B4A; --navy2: #2C3E5F; --gold: #B8872C; --paper: #FAF9F6;
+    --slate: #4A5568; --line: #ECE8DD; --line2: #D6D1C4; --muted: #8A8578;
+    --green: #22543D; --red: #9B1C1C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--navy);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mast {
+    background: var(--navy); border-bottom: 3px solid var(--gold);
+    padding: calc(24px + env(safe-area-inset-top)) 20px 22px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  .eyebrow {
+    color: var(--gold); font-size: 11px; letter-spacing: .18em;
+    font-weight: 700; text-transform: uppercase; margin-bottom: 6px;
+  }
+  h1 { font-family: Georgia, 'Times New Roman', serif; color: #fff; font-size: 26px; margin: 0; }
+  .stats { display: flex; gap: 26px; margin-top: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .counter .big { font-family: Georgia, serif; font-size: 32px; font-weight: 700; color: #fff; line-height: 1; }
+  .counter.gold .big { color: var(--gold); }
+  .counter .lbl { font-size: 10.5px; color: #C7CEDB; letter-spacing: .04em; margin-top: 3px; text-transform: uppercase; }
+  .progwrap { flex: 1; min-width: 180px; }
+  .progmeta { display: flex; justify-content: space-between; color: #C7CEDB; font-size: 12px; margin-bottom: 5px; }
+  .progbar { height: 6px; background: var(--navy2); border-radius: 3px; overflow: hidden; }
+  .progbar > div { height: 100%; background: var(--gold); transition: width .4s ease; }
+  .toolbar {
+    max-width: 860px; margin: 0 auto; padding: 14px 20px 0;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .chip {
+    padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line2);
+    background: #fff; color: var(--slate); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .toolbtn {
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line2);
+    background: #fff; color: var(--slate); font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .savenote { margin-left: auto; font-size: 12px; color: var(--muted); }
+  main { max-width: 860px; margin: 0 auto; padding: 10px 20px 70px; }
+  section { margin-top: 26px; }
+  .phead {
+    display: flex; align-items: baseline; gap: 11px;
+    border-bottom: 2px solid var(--navy); padding-bottom: 8px;
+  }
+  .pnum { font-family: Georgia, serif; font-size: 13px; color: var(--gold); font-weight: 700; }
+  .phead h2 { font-family: Georgia, serif; font-size: 19px; margin: 0; }
+  .pdates { font-size: 12px; color: var(--muted); }
+  .pcount { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .pcount.full { color: var(--green); }
+  ul.tasks { list-style: none; margin: 0; padding: 0; }
+  li.task {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 2px; border-bottom: 1px solid var(--line);
+  }
+  li.task.done { opacity: .55; }
+  li.task.done .txt { text-decoration: line-through; }
+  .cb {
+    width: 22px; height: 22px; margin-top: 1px; border-radius: 5px; flex-shrink: 0;
+    border: 2px solid var(--gold); background: #fff; color: #fff;
+    font-size: 13px; line-height: 18px; cursor: pointer; padding: 0;
+  }
+  li.task.done .cb { border-color: var(--green); background: var(--green); }
+  .txt { flex: 1; font-size: 14.5px; line-height: 1.45; }
+  .who {
+    font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
+    border: none; cursor: pointer; flex-shrink: 0;
+  }
+  .who.CK { background: var(--navy); color: #fff; }
+  .who.Sophia { background: var(--gold); color: #fff; }
+  .who.Both { background: #E8E2D6; color: var(--navy); }
+  .del {
+    border: none; background: transparent; color: #B9B3A4; cursor: pointer;
+    font-size: 17px; line-height: 1; padding: 2px 4px; flex-shrink: 0;
+  }
+  .addrow { display: flex; gap: 8px; margin-top: 10px; }
+  .addrow input {
+    flex: 1; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line2);
+    font-size: 14px; background: #fff; color: var(--navy); outline: none;
+  }
+  .addrow input:focus { border-color: var(--gold); }
+  .addrow button {
+    padding: 10px 16px; border-radius: 6px; border: none; background: var(--gold);
+    color: #fff; font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  .empty { padding: 12px 2px; font-size: 13px; color: var(--muted); font-style: italic; }
+  .foot {
+    margin-top: 38px; font-size: 12px; color: var(--muted); line-height: 1.6;
+    border-top: 1px solid var(--line); padding-top: 14px;
+  }
+  #installbar {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--navy); color: #fff; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    text-align: center; font-size: 13.5px; z-index: 50;
+  }
+  #installbar button {
+    margin-left: 10px; padding: 6px 14px; border-radius: 6px; border: none;
+    background: var(--gold); color: #fff; font-weight: 700; cursor: pointer; font-size: 13px;
+  }
+  @media (max-width: 480px) {
+    .stats { gap: 18px; }
+    .counter .big { font-size: 27px; }
+    .who { padding: 4px 9px; }
+  }
+</style>
+</head>
+<body>
+<div class="mast"><div class="wrap">
+  <div class="eyebrow">Dunsfold Residences · 3C Dunsfold Drive</div>
+  <h1>Renovation &amp; Move</h1>
+  <div class="stats">
+    <div class="counter"><div class="big" id="dkeys">–</div><div class="lbl">days to keys · 14 Oct</div></div>
+    <div class="counter gold"><div class="big" id="dmove">–</div><div class="lbl">days to move · 30 Nov</div></div>
+    <div class="progwrap">
+      <div class="progmeta"><span id="pmeta">0 of 0 done</span><span id="ppct">0%</span></div>
+      <div class="progbar"><div id="pfill" style="width:0%"></div></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="toolbar">
+  <button class="chip on" data-f="All">All tasks</button>
+  <button class="chip" data-f="CK">CK's tasks</button>
+  <button class="chip" data-f="Sophia">Sophia's tasks</button>
+  <button class="toolbtn" id="exportBtn" title="Download list as a file to share">Export</button>
+  <button class="toolbtn" id="importBtn" title="Load a list file from your partner">Import</button>
+  <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
+  <span class="savenote" id="savenote"></span>
+</div>
+
+<main id="phases"></main>
+
+<div id="installbar">
+  Install this app on your phone for quick access
+  <button id="installBtn">Install</button>
+  <button id="installDismiss" style="background:transparent;border:1px solid #C7CEDB;">Not now</button>
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────
+const SEED = {
+  version: 1,
+  phases: [
+    { id:"p0", name:"Before Keys", dates:"Now – 13 Oct 2026", tasks:[
+      { id:"p0-1", text:"Verify MCST 3729 maintenance fee + sinking fund balance", who:"CK", done:false },
+      { id:"p0-2", text:"Ask MCST: approval rules for zip screens, landscaping, facade works", who:"CK", done:false },
+      { id:"p0-3", text:"Get 2–3 quotes from ID / main contractors, shortlist", who:"Both", done:false },
+      { id:"p0-4", text:"Engage M&E consultant for basement ERV design", who:"CK", done:false },
+      { id:"p0-5", text:"Shortlist landscaper — west-sun shading: trees + vertical greenery", who:"Sophia", done:false },
+      { id:"p0-6", text:"Choose Japanese toilet models for 5 bathrooms (check rough-in + power needs)", who:"Sophia", done:false },
+      { id:"p0-7", text:"Confirm renovation budget envelope + payment schedule", who:"Both", done:false },
+      { id:"p0-8", text:"Book movers for late Nov", who:"Both", done:false },
+      { id:"p0-9", text:"Spec aircon upgrade for 3 west-facing rooms", who:"CK", done:false }
+    ]},
+    { id:"p1", name:"Keys + Assessment", dates:"14 – 27 Oct 2026", tasks:[
+      { id:"p1-1", text:"Collect keys 14 Oct — photo/video document unit condition", who:"Both", done:false },
+      { id:"p1-2", text:"Waterproofing inspection of both basements (BEFORE any ERV work)", who:"CK", done:false },
+      { id:"p1-3", text:"M&E site survey: ERV sizing, duct routing, fresh-air intake location", who:"CK", done:false },
+      { id:"p1-4", text:"Electrician survey: outlets near all 5 toilets + aircon circuits", who:"CK", done:false },
+      { id:"p1-5", text:"Water pressure test for washlet requirements", who:"CK", done:false },
+      { id:"p1-6", text:"Finalise contractor quote, award and sign", who:"Both", done:false },
+      { id:"p1-7", text:"Submit MCST applications (screens / landscaping if required)", who:"CK", done:false },
+      { id:"p1-8", text:"Order long-lead items: toilets, zip screens, ERV units, aircon", who:"Sophia", done:false },
+      { id:"p1-9", text:"Landscaper site visit — mark tree positions clear of basement structure", who:"Sophia", done:false }
+    ]},
+    { id:"p2", name:"Core Works", dates:"28 Oct – 17 Nov 2026", tasks:[
+      { id:"p2-1", text:"Waterproofing remediation (if inspection found issues)", who:"CK", done:false },
+      { id:"p2-2", text:"ERV install: ceiling supply, low exhaust, CO2/humidity sensors, positive pressure", who:"CK", done:false },
+      { id:"p2-3", text:"Electrical works: toilet outlets + aircon points", who:"CK", done:false },
+      { id:"p2-4", text:"Install 5 Japanese toilet systems", who:"Sophia", done:false },
+      { id:"p2-5", text:"Aircon upgrade in 3 west-facing rooms", who:"CK", done:false },
+      { id:"p2-6", text:"Solar film on west-facing glass", who:"CK", done:false },
+      { id:"p2-7", text:"Landscaping planting begins (trees need lead time — OK to continue post-move)", who:"Sophia", done:false },
+      { id:"p2-8", text:"Zip screens install (subject to MCST approval — may slip past move-in)", who:"CK", done:false }
+    ]},
+    { id:"p3", name:"Move Prep + Move", dates:"18 – 30 Nov 2026", tasks:[
+      { id:"p3-1", text:"Renovation walkthrough — build defects list with contractor", who:"Both", done:false },
+      { id:"p3-2", text:"Post-reno deep cleaning", who:"Sophia", done:false },
+      { id:"p3-3", text:"Utilities: SP account activation + internet installation", who:"CK", done:false },
+      { id:"p3-4", text:"Address changes: banks, SingPass, IRAS, employers, subscriptions", who:"Both", done:false },
+      { id:"p3-5", text:"Confirm mover date + pack", who:"Both", done:false },
+      { id:"p3-6", text:"Move day — unpack essentials", who:"Both", done:false }
+    ]},
+    { id:"p4", name:"Post-Move", dates:"Dec 2026 onward", tasks:[
+      { id:"p4-1", text:"Monitor basement humidity (target under 60–65% RH)", who:"CK", done:false },
+      { id:"p4-2", text:"Tree establishment watering schedule", who:"Sophia", done:false },
+      { id:"p4-3", text:"Complete zip screens if delayed by MCST approval", who:"CK", done:false },
+      { id:"p4-4", text:"Fix defects list items with contractor", who:"Both", done:false }
+    ]}
+  ]
+};
+
+const KEY = "dunsfold-reno-todo-v1";
+const MOVE = new Date("2026-11-30T00:00:00+08:00");
+const KEYS = new Date("2026-10-14T00:00:00+08:00");
+const CYCLE = { CK:"Sophia", Sophia:"Both", Both:"CK" };
+
+let state, filter = "All";
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    state = raw ? JSON.parse(raw) : structuredClone(SEED);
+  } catch { state = structuredClone(SEED); }
+}
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    flashSave("Saved ✓");
+  } catch { flashSave("Couldn't save", true); }
+}
+let saveTimer;
+function flashSave(msg, err) {
+  const el = document.getElementById("savenote");
+  el.textContent = msg;
+  el.style.color = err ? "var(--red)" : "var(--muted)";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => el.textContent = "", 1600);
+}
+
+// ── Render ───────────────────────────────────────────────────────────
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function render() {
+  // counters
+  const now = new Date();
+  document.getElementById("dkeys").textContent = Math.max(0, Math.ceil((KEYS - now)/864e5));
+  document.getElementById("dmove").textContent = Math.max(0, Math.ceil((MOVE - now)/864e5));
+  const all = state.phases.flatMap(p => p.tasks);
+  const done = all.filter(t => t.done).length;
+  const pct = all.length ? Math.round(done/all.length*100) : 0;
+  document.getElementById("pmeta").textContent = done + " of " + all.length + " done";
+  document.getElementById("ppct").textContent = pct + "%";
+  document.getElementById("pfill").style.width = pct + "%";
+
+  // phases
+  const root = document.getElementById("phases");
+  root.innerHTML = "";
+  state.phases.forEach((phase, pi) => {
+    const pd = phase.tasks.filter(t => t.done).length;
+    const vis = phase.tasks.filter(t => filter === "All" || t.who === filter || t.who === "Both");
+    const sec = document.createElement("section");
+    sec.innerHTML = `
+      <div class="phead">
+        <span class="pnum">${String(pi).padStart(2,"0")}</span>
+        <h2>${esc(phase.name)}</h2>
+        <span class="pdates">${esc(phase.dates)}</span>
+        <span class="pcount ${pd === phase.tasks.length && phase.tasks.length ? "full":""}">${pd}/${phase.tasks.length}</span>
+      </div>
+      <ul class="tasks">
+        ${vis.map(t => `
+          <li class="task ${t.done ? "done":""}" data-p="${phase.id}" data-t="${t.id}">
+            <button class="cb" aria-label="${t.done ? "Mark not done":"Mark done"}">${t.done ? "✓":""}</button>
+            <span class="txt">${esc(t.text)}</span>
+            <button class="who ${t.who}" title="Click to reassign">${t.who}</button>
+            <button class="del" aria-label="Delete task" title="Delete">×</button>
+          </li>`).join("")}
+        ${vis.length === 0 ? `<li class="empty">No tasks for this filter — switch to "All tasks" to see everything.</li>` : ""}
+      </ul>
+      <div class="addrow">
+        <input type="text" placeholder="Add a task to ${esc(phase.name)}…" data-add="${phase.id}" />
+        <button data-addbtn="${phase.id}">Add</button>
+      </div>`;
+    root.appendChild(sec);
+  });
+
+  const foot = document.createElement("p");
+  foot.className = "foot";
+  foot.textContent = "Timeline note: 6.5 weeks from keys to move is tight. Landscaping trees and MCST-dependent zip screens are expected to continue past move-in — neither blocks occupancy. Waterproofing must be confirmed before ERV installation. Data is stored on this device; use Export / Import to sync between CK and Sophia.";
+  root.appendChild(foot);
+}
+
+// ── Events (delegated) ───────────────────────────────────────────────
+document.getElementById("phases").addEventListener("click", e => {
+  const li = e.target.closest("li.task");
+  if (li) {
+    const p = state.phases.find(x => x.id === li.dataset.p);
+    const t = p.tasks.find(x => x.id === li.dataset.t);
+    if (e.target.classList.contains("cb")) { t.done = !t.done; save(); render(); return; }
+    if (e.target.classList.contains("who")) { t.who = CYCLE[t.who]; save(); render(); return; }
+    if (e.target.classList.contains("del")) { p.tasks = p.tasks.filter(x => x !== t); save(); render(); return; }
+  }
+  if (e.target.dataset.addbtn) addTask(e.target.dataset.addbtn);
+});
+document.getElementById("phases").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.dataset.add) addTask(e.target.dataset.add);
+});
+function addTask(pid) {
+  const input = document.querySelector(`input[data-add="${pid}"]`);
+  const text = input.value.trim();
+  if (!text) return;
+  const p = state.phases.find(x => x.id === pid);
+  p.tasks.push({ id: pid + "-" + Date.now(), text, who: "Both", done: false });
+  save(); render();
+  const again = document.querySelector(`input[data-add="${pid}"]`);
+  if (again) again.focus();
+}
+
+// filters
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+  filter = c.dataset.f;
+  document.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === c));
+  render();
+}));
+
+// export / import
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dunsfold-reno-" + new Date().toISOString().slice(0,10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("importBtn").addEventListener("click", () =>
+  document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const parsed = JSON.parse(r.result);
+      if (!parsed.phases) throw new Error("bad file");
+      state = parsed; save(); render(); flashSave("Imported ✓");
+    } catch { flashSave("That file isn't a valid list", true); }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+});
+
+// ── PWA install prompt ───────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById("installbar").style.display = "block";
+});
+document.getElementById("installBtn").addEventListener("click", async () => {
+  document.getElementById("installbar").style.display = "none";
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+});
+document.getElementById("installDismiss").addEventListener("click", () =>
+  document.getElementById("installbar").style.display = "none");
+
+// service worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+
+// go
+load(); render();
+// refresh countdowns at midnight-ish
+setInterval(render, 60 * 60 * 1000);
+</script>
+</body>
+</html>
