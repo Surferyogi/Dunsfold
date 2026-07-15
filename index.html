@@ -150,6 +150,13 @@
     font-size: 10px; line-height: 1; padding: 4px 6px; border-radius: 4px;
   }
   .mv button:disabled { opacity: .25; cursor: default; }
+  .pri {
+    font-family: Georgia, serif; font-weight: 700; font-size: 13px;
+    color: var(--muted); min-width: 20px; text-align: right;
+    margin-top: 4px; flex-shrink: 0;
+  }
+  li.task.late .txt { color: #E11D1D; font-style: italic; }
+  li.task.late .pri { color: #E11D1D; }
   li.task.na { opacity: .45; }
   li.task.na .txt { font-style: italic; }
   li.task.na .cb { border-color: var(--muted); background: var(--muted); color: #fff; }
@@ -320,6 +327,39 @@ function fmtD(iso) {
   return new Date(iso + "T00:00:00+08:00")
     .toLocaleDateString("en-SG", { day: "numeric", month: "short", timeZone: "Asia/Singapore" });
 }
+// Phase windows derived from the editable keys/move dates, so labels and
+// overdue checks stay correct whenever the dates are edited.
+function addDays(base, days) { const x = new Date(base); x.setDate(x.getDate() + days); return x; }
+function phaseWindow(pid) {
+  const K = keysDate(), M = moveDate();
+  switch (pid) {
+    case "p0": return { start: null,          end: addDays(K, -1) };
+    case "p1": return { start: K,             end: addDays(K, 13) };
+    case "p2": return { start: addDays(K,14), end: addDays(M, -7) };
+    case "p3": return { start: addDays(M,-6), end: M };
+    case "p4": return { start: addDays(M, 1), end: null };
+    default:   return null;
+  }
+}
+function fmtPart(dt, opts) {
+  return dt.toLocaleDateString("en-SG", { ...opts, timeZone: "Asia/Singapore" });
+}
+function phaseLabel(pid, fallback) {
+  const w = phaseWindow(pid);
+  if (!w) return fallback;
+  if (!w.start) return "Now – " + fmtPart(w.end, { day:"numeric", month:"short", year:"numeric" });
+  if (!w.end)   return "From " + fmtPart(w.start, { day:"numeric", month:"short", year:"numeric" });
+  const sameMonth = fmtPart(w.start, { month:"short" }) === fmtPart(w.end, { month:"short" });
+  const s = sameMonth ? fmtPart(w.start, { day:"numeric" })
+                      : fmtPart(w.start, { day:"numeric", month:"short" });
+  return s + " – " + fmtPart(w.end, { day:"numeric", month:"short", year:"numeric" });
+}
+function isOverdue(pid, t) {
+  if (t.done || t.na) return false;
+  const w = phaseWindow(pid);
+  if (!w || !w.end) return false;
+  return Date.now() > w.end.getTime() + 86399999; // past end of the phase's last day (SGT)
+}
 const CYCLE = { CK:"Sophia", Sophia:"Both", Both:"CK" };
 
 let state, filter = "All";
@@ -423,7 +463,7 @@ function renderList() {
       <div class="phead">
         <span class="pnum">${String(pi).padStart(2,"0")}</span>
         <h2>${esc(phase.name)}</h2>
-        <span class="pdates">${esc(phase.dates)}</span>
+        <span class="pdates">${esc(phaseLabel(phase.id, phase.dates))}</span>
         <span class="pcount ${pd === pneed && pneed > 0 ? "full":""}">${pd}/${pneed}${pna ? " · " + pna + " n/a" : ""}</span>
       </div>
       <ul class="tasks">
@@ -434,18 +474,20 @@ function renderList() {
           if (t.notes.trim()) bits.push("notes");
           const idx = phase.tasks.indexOf(t);
           const cbTxt = t.na ? "–" : (t.done ? "✓" : "");
+          const late = isOverdue(phase.id, t);
           return `
-          <li class="task ${t.done && !t.na ? "done":""} ${t.na ? "na":""}" data-p="${phase.id}" data-t="${t.id}">
-            <button class="cb" aria-label="Toggle status">${cbTxt}</button>
-            <div class="txtwrap" title="Open details">
-              <div class="txt">${esc(t.text)}</div>
-              ${bits.length ? `<div class="meta">${bits.join(" · ")} ›</div>` : `<div class="meta" style="color:var(--muted);font-weight:400">tap to add details ›</div>`}
-            </div>
+          <li class="task ${t.done && !t.na ? "done":""} ${t.na ? "na":""} ${late ? "late":""}" data-p="${phase.id}" data-t="${t.id}">
+            <span class="pri">${idx + 1}</span>
             ${filter === "All" ? `
             <div class="mv">
               <button class="up" ${idx === 0 ? "disabled":""} title="Move up" aria-label="Move up">▲</button>
               <button class="dn" ${idx === phase.tasks.length - 1 ? "disabled":""} title="Move down" aria-label="Move down">▼</button>
             </div>` : ""}
+            <button class="cb" aria-label="Toggle status">${cbTxt}</button>
+            <div class="txtwrap" title="Open details">
+              <div class="txt">${esc(t.text)}</div>
+              ${bits.length ? `<div class="meta">${bits.join(" · ")} ›</div>` : `<div class="meta" style="color:var(--muted);font-weight:400">tap to add details ›</div>`}
+            </div>
             <button class="who ${t.who}" title="Click to reassign">${t.who}</button>
             <button class="del" aria-label="Delete task" title="Delete">×</button>
           </li>`;
@@ -475,7 +517,7 @@ function renderDetail(pid, tid) {
   }
   root.innerHTML = `
     <button class="back" id="backBtn">‹ All tasks</button>
-    <div class="d-eyebrow">${esc(p.name)} · ${esc(p.dates)}</div>
+    <div class="d-eyebrow">${esc(p.name)} · ${esc(phaseLabel(p.id, p.dates))}</div>
     <input class="d-title" id="dTitle" value="${esc(t.text)}" aria-label="Task title (editable)" />
     <div class="d-status">
       <div class="seg" role="group" aria-label="Status">
@@ -638,7 +680,7 @@ document.getElementById("dateDone").addEventListener("click", () => {
   if (k) state.dates.keys = k;
   if (m) state.dates.move = m;
   document.getElementById("dateEditor").style.display = "none";
-  save(); renderHeader();
+  save(); render();
 });
 
 // ── PWA install prompt ───────────────────────────────────────────────
