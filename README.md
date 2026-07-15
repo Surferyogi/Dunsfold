@@ -41,12 +41,18 @@ After installing, the app opens full-screen like a native app and works offline.
 
 ## Keeping CK & Sophia in sync
 
-Data is stored on each device separately (there is no server). To sync:
-1. Person with the latest changes taps **Export** — this downloads a small .json file
-2. Send it via WhatsApp/AirDrop/email
-3. The other person taps **Import** and picks that file
+You now share ONE list, automatically. Changes made on either phone sync through
+a small cloud database (Supabase) and appear on the other phone within seconds
+(the app checks every 8 seconds while open, and immediately on opening).
 
-Tip: do a quick export/import at the end of any day where both of you made changes.
+- Works offline: changes save locally and sync when you're back online
+- The sync status shows at the top right ("Syncing…" / "Synced" / "Offline")
+- Export / Import still works as a manual backup
+
+Note: the sync key is embedded in the app. Anyone who has your app's URL could
+technically read/write this one list, so don't post the URL publicly. The data
+lives in an isolated table in your Supabase project ("life-compass" >
+dunsfold_reno_state).
 
 ## Changing the task list defaults
 

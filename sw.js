@@ -1,4 +1,4 @@
-const CACHE = "dunsfold-reno-v5";
+const CACHE = "dunsfold-reno-v6";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -17,6 +17,9 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // Never intercept cross-origin requests (e.g. the sync backend) —
+  // caching those would freeze the shared list at its first response.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     caches.match(e.request).then(
       (hit) =>

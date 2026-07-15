@@ -397,19 +397,115 @@ function load() {
   } catch { state = migrate(structuredClone(SEED)); }
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); flashSave("Saved ✓"); }
-  catch { flashSave("Couldn't save", true); }
+  state.rev = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch { flashSave("Couldn't save locally", true); }
+  schedulePush();
 }
 let saveTimer;
-function flashSave(msg, err) {
+function flashSave(msg, err, sticky) {
   const el = document.getElementById("savenote");
   el.textContent = msg;
   el.style.color = err ? "var(--red)" : "var(--muted)";
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => el.textContent = "", 1600);
+  if (!sticky) saveTimer = setTimeout(() => el.textContent = "", 1800);
 }
 let debTimer;
 function saveDebounced() { clearTimeout(debTimer); debTimer = setTimeout(save, 600); }
+
+// ── Cloud sync (shared list for CK & Sophia via Supabase) ────────────
+const SYNC = {
+  url: "https://pcmucpwotcwuypgifnxx.supabase.co",
+  key: "sb_publishable_tXVILzokqrV3t1kk8Cmyzw_tA88ffgI",
+  table: "dunsfold_reno_state",
+  row: "dunsfold"
+};
+let dirty = false, pushTimer = null, pushing = false;
+
+function syncHeaders(extra) {
+  return Object.assign({
+    apikey: SYNC.key,
+    Authorization: "Bearer " + SYNC.key
+  }, extra || {});
+}
+function schedulePush() {
+  dirty = true;
+  flashSave("Syncing…", false, true);
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushRemote, 800);
+}
+async function pushRemote() {
+  if (pushing) { schedulePush(); return; }
+  pushing = true;
+  try {
+    const r = await fetch(`${SYNC.url}/rest/v1/${SYNC.table}`, {
+      method: "POST",
+      headers: syncHeaders({
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates"
+      }),
+      body: JSON.stringify({
+        id: SYNC.row,
+        data: state,
+        updated_at: new Date().toISOString()
+      })
+    });
+    if (!r.ok) throw new Error("push " + r.status);
+    dirty = false;
+    flashSave("Synced ✓");
+  } catch {
+    flashSave("Offline — will sync when back online", true, true);
+  } finally {
+    pushing = false;
+  }
+}
+async function pullRemote() {
+  try {
+    const r = await fetch(
+      `${SYNC.url}/rest/v1/${SYNC.table}?id=eq.${SYNC.row}&select=data`,
+      { headers: syncHeaders() }
+    );
+    if (!r.ok) throw new Error("pull " + r.status);
+    const rows = await r.json();
+    return rows.length ? rows[0].data : null;
+  } catch { return null; }
+}
+function userIsTyping() {
+  const a = document.activeElement;
+  return a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA") && a.value !== "";
+}
+async function syncTick() {
+  if (document.hidden) return;
+  if (dirty) { pushRemote(); return; }
+  const remote = await pullRemote();
+  if (!remote) return;
+  if ((remote.rev || 0) > (state.rev || 0)) {
+    if (userIsTyping()) return; // don't yank the page mid-edit; next tick catches up
+    state = migrate(remote);
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    render();
+    flashSave("Updated from your partner ✓");
+  }
+}
+async function syncInit() {
+  const remote = await pullRemote();
+  if (remote === null) {
+    // no remote row yet (or offline) — publish local so the other phone can pick it up
+    schedulePush();
+    return;
+  }
+  if ((remote.rev || 0) > (state.rev || 0)) {
+    state = migrate(remote);
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    render();
+    flashSave("Synced ✓");
+  } else if ((state.rev || 0) > (remote.rev || 0)) {
+    schedulePush();
+  }
+}
+setInterval(syncTick, 8000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) syncTick(); });
+window.addEventListener("online", () => { if (dirty) pushRemote(); });
 
 function findTask(pid, tid) {
   const p = state.phases.find(x => x.id === pid);
@@ -503,7 +599,7 @@ function renderList() {
 
   const foot = document.createElement("p");
   foot.className = "foot";
-  foot.textContent = "Tap any task to open its detail page — edit the title, keep notes, and log entries (e.g. each contractor and their quote; star the one you pick). Data is stored on this device; use Export / Import to sync between CK and Sophia. Timeline note: waterproofing must be confirmed before ERV installation; trees and MCST-dependent screens may continue past move-in.";
+  foot.textContent = "Tap any task to open its detail page — edit the title, keep notes, and log entries (e.g. each contractor and their quote; star the one you pick). CK and Sophia share one list: changes sync automatically and appear on the other phone within seconds. Export / Import remains as a manual backup. Timeline note: waterproofing must be confirmed before ERV installation; trees and MCST-dependent screens may continue past move-in.";
   root.appendChild(foot);
 }
 
@@ -704,7 +800,7 @@ if ("serviceWorker" in navigator) {
 }
 
 // go
-load(); render();
+load(); render(); syncInit();
 setInterval(renderHeader, 60 * 60 * 1000);
 </script>
 </body>
