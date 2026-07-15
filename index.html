@@ -42,6 +42,24 @@
   .progmeta { display: flex; justify-content: space-between; color: #C7CEDB; font-size: 12px; margin-bottom: 5px; }
   .progbar { height: 6px; background: var(--navy2); border-radius: 3px; overflow: hidden; }
   .progbar > div { height: 100%; background: var(--gold); transition: width .4s ease; }
+  .editdates {
+    align-self: flex-start; border: 1px solid var(--gold); background: transparent;
+    color: var(--gold); border-radius: 6px; padding: 5px 11px; font-size: 12px;
+    font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .dateeditor { display: none; gap: 14px; margin-top: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .dateeditor label {
+    color: #C7CEDB; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    display: flex; flex-direction: column; gap: 4px; font-weight: 700;
+  }
+  .dateeditor input {
+    padding: 7px 9px; border-radius: 6px; border: 1px solid var(--line2);
+    font-size: 14px; font-family: inherit; color: var(--navy);
+  }
+  .dateeditor button {
+    padding: 9px 18px; border: none; border-radius: 6px; background: var(--gold);
+    color: #fff; font-weight: 700; cursor: pointer; font-size: 13px;
+  }
   .toolbar {
     max-width: 860px; margin: 0 auto; padding: 14px 20px 0;
     display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -111,9 +129,30 @@
   }
   /* ── Detail view ─────────────────────────────── */
   .back {
-    display: inline-block; margin-top: 4px; border: none; background: transparent;
-    color: var(--gold); font-weight: 700; font-size: 14px; cursor: pointer; padding: 6px 0;
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+    border: none; background: var(--gold); color: #fff; font-weight: 700;
+    font-size: 15px; cursor: pointer; padding: 12px 22px; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(26,43,74,.3); letter-spacing: .02em;
   }
+  .back:active { transform: translateY(1px); }
+  .seg { display: inline-flex; border: 1.5px solid var(--line2); border-radius: 8px; overflow: hidden; background: #fff; }
+  .seg button {
+    border: none; background: #fff; color: var(--slate); font-size: 13px; font-weight: 600;
+    padding: 9px 15px; cursor: pointer; border-right: 1.5px solid var(--line2);
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button.on.s-open { background: var(--navy); color: #fff; }
+  .seg button.on.s-done { background: var(--green); color: #fff; }
+  .seg button.on.s-na { background: var(--muted); color: #fff; }
+  .mv { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+  .mv button {
+    border: 1px solid var(--line2); background: #fff; color: var(--slate); cursor: pointer;
+    font-size: 10px; line-height: 1; padding: 4px 6px; border-radius: 4px;
+  }
+  .mv button:disabled { opacity: .25; cursor: default; }
+  li.task.na { opacity: .45; }
+  li.task.na .txt { font-style: italic; }
+  li.task.na .cb { border-color: var(--muted); background: var(--muted); color: #fff; }
   .d-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-top: 10px; }
   .d-title {
     width: 100%; font-family: Georgia, serif; font-size: 21px; font-weight: 700;
@@ -185,12 +224,18 @@
   <div class="eyebrow">Dunsfold Residences · 3C Dunsfold Drive</div>
   <h1>Renovation &amp; Move</h1>
   <div class="stats">
-    <div class="counter"><div class="big" id="dkeys">–</div><div class="lbl">days to keys · 14 Oct</div></div>
-    <div class="counter gold"><div class="big" id="dmove">–</div><div class="lbl">days to move · 30 Nov</div></div>
+    <div class="counter"><div class="big" id="dkeys">–</div><div class="lbl" id="dkeysLbl">days to keys</div></div>
+    <div class="counter gold"><div class="big" id="dmove">–</div><div class="lbl" id="dmoveLbl">tentative move</div></div>
+    <button class="editdates" id="editDatesBtn" title="Edit key collection and move dates">&#9998; edit dates</button>
     <div class="progwrap">
       <div class="progmeta"><span id="pmeta">0 of 0 done</span><span id="ppct">0%</span></div>
       <div class="progbar"><div id="pfill" style="width:0%"></div></div>
     </div>
+  </div>
+  <div class="dateeditor" id="dateEditor">
+    <label>Keys collection <input type="date" id="inKeys" /></label>
+    <label>Move-in (tentative) <input type="date" id="inMove" /></label>
+    <button id="dateDone">Done</button>
   </div>
 </div></div>
 
@@ -215,9 +260,10 @@
 <script>
 // ── Seed data ────────────────────────────────────────────────────────
 const SEED = {
-  version: 2,
+  version: 4,
+  dates: { keys: "2026-10-08", move: "2026-11-19" },
   phases: [
-    { id:"p0", name:"Before Keys", dates:"Now – 13 Oct 2026", tasks:[
+    { id:"p0", name:"Before Keys", dates:"Now – 7 Oct 2026", tasks:[
       { id:"p0-1", text:"Verify MCST 3729 maintenance fee + sinking fund balance", who:"CK", done:false },
       { id:"p0-2", text:"Ask MCST: approval rules for zip screens, landscaping, facade works", who:"CK", done:false },
       { id:"p0-3", text:"Get 2–3 quotes from ID / main contractors, shortlist", who:"Both", done:false },
@@ -225,11 +271,11 @@ const SEED = {
       { id:"p0-5", text:"Shortlist landscaper — west-sun shading: trees + vertical greenery", who:"Sophia", done:false },
       { id:"p0-6", text:"Choose Japanese toilet models for 5 bathrooms (check rough-in + power needs)", who:"Sophia", done:false },
       { id:"p0-7", text:"Confirm renovation budget envelope + payment schedule", who:"Both", done:false },
-      { id:"p0-8", text:"Book movers for late Nov", who:"Both", done:false },
+      { id:"p0-8", text:"Book movers for mid-Nov", who:"Both", done:false },
       { id:"p0-9", text:"Spec aircon upgrade for 3 west-facing rooms", who:"CK", done:false }
     ]},
-    { id:"p1", name:"Keys + Assessment", dates:"14 – 27 Oct 2026", tasks:[
-      { id:"p1-1", text:"Collect keys 14 Oct — photo/video document unit condition", who:"Both", done:false },
+    { id:"p1", name:"Keys + Assessment", dates:"8 – 21 Oct 2026", tasks:[
+      { id:"p1-1", text:"Collect keys 8 Oct — photo/video document unit condition", who:"Both", done:false },
       { id:"p1-2", text:"Waterproofing inspection of both basements (BEFORE any ERV work)", who:"CK", done:false },
       { id:"p1-3", text:"M&E site survey: ERV sizing, duct routing, fresh-air intake location", who:"CK", done:false },
       { id:"p1-4", text:"Electrician survey: outlets near all 5 toilets + aircon circuits", who:"CK", done:false },
@@ -239,7 +285,7 @@ const SEED = {
       { id:"p1-8", text:"Order long-lead items: toilets, zip screens, ERV units, aircon", who:"Sophia", done:false },
       { id:"p1-9", text:"Landscaper site visit — mark tree positions clear of basement structure", who:"Sophia", done:false }
     ]},
-    { id:"p2", name:"Core Works", dates:"28 Oct – 17 Nov 2026", tasks:[
+    { id:"p2", name:"Core Works", dates:"22 Oct – 12 Nov 2026", tasks:[
       { id:"p2-1", text:"Waterproofing remediation (if inspection found issues)", who:"CK", done:false },
       { id:"p2-2", text:"ERV install: ceiling supply, low exhaust, CO2/humidity sensors, positive pressure", who:"CK", done:false },
       { id:"p2-3", text:"Electrical works: toilet outlets + aircon points", who:"CK", done:false },
@@ -249,7 +295,7 @@ const SEED = {
       { id:"p2-7", text:"Landscaping planting begins (trees need lead time — OK to continue post-move)", who:"Sophia", done:false },
       { id:"p2-8", text:"Zip screens install (subject to MCST approval — may slip past move-in)", who:"CK", done:false }
     ]},
-    { id:"p3", name:"Move Prep + Move", dates:"18 – 30 Nov 2026", tasks:[
+    { id:"p3", name:"Move Prep + Move", dates:"13 – 19 Nov 2026", tasks:[
       { id:"p3-1", text:"Renovation walkthrough — build defects list with contractor", who:"Both", done:false },
       { id:"p3-2", text:"Post-reno deep cleaning", who:"Sophia", done:false },
       { id:"p3-3", text:"Utilities: SP account activation + internet installation", who:"CK", done:false },
@@ -257,7 +303,7 @@ const SEED = {
       { id:"p3-5", text:"Confirm mover date + pack", who:"Both", done:false },
       { id:"p3-6", text:"Move day — unpack essentials", who:"Both", done:false }
     ]},
-    { id:"p4", name:"Post-Move", dates:"Dec 2026 onward", tasks:[
+    { id:"p4", name:"Post-Move", dates:"From 20 Nov 2026", tasks:[
       { id:"p4-1", text:"Monitor basement humidity (target under 60–65% RH)", who:"CK", done:false },
       { id:"p4-2", text:"Tree establishment watering schedule", who:"Sophia", done:false },
       { id:"p4-3", text:"Complete zip screens if delayed by MCST approval", who:"CK", done:false },
@@ -267,18 +313,41 @@ const SEED = {
 };
 
 const KEY = "dunsfold-reno-todo-v1";
-const MOVE = new Date("2026-11-30T00:00:00+08:00");
-const KEYS = new Date("2026-10-14T00:00:00+08:00");
+const DEFAULT_DATES = { keys: "2026-10-08", move: "2026-11-19" };
+function keysDate() { return new Date(state.dates.keys + "T00:00:00+08:00"); }
+function moveDate() { return new Date(state.dates.move + "T00:00:00+08:00"); }
+function fmtD(iso) {
+  return new Date(iso + "T00:00:00+08:00")
+    .toLocaleDateString("en-SG", { day: "numeric", month: "short", timeZone: "Asia/Singapore" });
+}
 const CYCLE = { CK:"Sophia", Sophia:"Both", Both:"CK" };
 
 let state, filter = "All";
 
 function migrate(s) {
-  s.phases.forEach(p => p.tasks.forEach(t => {
-    if (typeof t.notes !== "string") t.notes = "";
-    if (!Array.isArray(t.items)) t.items = [];
-  }));
-  s.version = 2;
+  if (!s.dates || !s.dates.keys || !s.dates.move) s.dates = { ...DEFAULT_DATES };
+  const PHASE_DATES = {
+    "Now – 13 Oct 2026": "Now – 7 Oct 2026",
+    "14 – 27 Oct 2026": "8 – 21 Oct 2026",
+    "28 Oct – 17 Nov 2026": "22 Oct – 12 Nov 2026",
+    "18 – 30 Nov 2026": "13 – 19 Nov 2026",
+    "Dec 2026 onward": "From 20 Nov 2026"
+  };
+  const TASK_TEXTS = {
+    "Collect keys 14 Oct — photo/video document unit condition":
+      "Collect keys 8 Oct — photo/video document unit condition",
+    "Book movers for late Nov": "Book movers for mid-Nov"
+  };
+  s.phases.forEach(p => {
+    if (PHASE_DATES[p.dates]) p.dates = PHASE_DATES[p.dates];
+    p.tasks.forEach(t => {
+      if (typeof t.notes !== "string") t.notes = "";
+      if (!Array.isArray(t.items)) t.items = [];
+      if (typeof t.na !== "boolean") t.na = false;
+      if (TASK_TEXTS[t.text]) t.text = TASK_TEXTS[t.text];
+    });
+  });
+  s.version = 4;
   return s;
 }
 function load() {
@@ -318,12 +387,17 @@ window.addEventListener("hashchange", render);
 // ── Render ───────────────────────────────────────────────────────────
 function renderHeader() {
   const now = new Date();
-  document.getElementById("dkeys").textContent = Math.max(0, Math.ceil((KEYS - now)/864e5));
-  document.getElementById("dmove").textContent = Math.max(0, Math.ceil((MOVE - now)/864e5));
+  document.getElementById("dkeys").textContent = Math.max(0, Math.ceil((keysDate() - now)/864e5));
+  document.getElementById("dmove").textContent = Math.max(0, Math.ceil((moveDate() - now)/864e5));
+  document.getElementById("dkeysLbl").textContent = "days to keys · " + fmtD(state.dates.keys);
+  document.getElementById("dmoveLbl").textContent = "tentative move · " + fmtD(state.dates.move);
   const all = state.phases.flatMap(p => p.tasks);
-  const done = all.filter(t => t.done).length;
-  const pct = all.length ? Math.round(done/all.length*100) : 0;
-  document.getElementById("pmeta").textContent = done + " of " + all.length + " done";
+  const na = all.filter(t => t.na).length;
+  const need = all.length - na;
+  const done = all.filter(t => t.done && !t.na).length;
+  const pct = need ? Math.round(done/need*100) : 0;
+  document.getElementById("pmeta").textContent =
+    done + " of " + need + " done" + (na ? " · " + na + " n/a" : "");
   document.getElementById("ppct").textContent = pct + "%";
   document.getElementById("pfill").style.width = pct + "%";
 }
@@ -340,7 +414,9 @@ function renderList() {
   const root = document.getElementById("app");
   root.innerHTML = "";
   state.phases.forEach((phase, pi) => {
-    const pd = phase.tasks.filter(t => t.done).length;
+    const pna = phase.tasks.filter(t => t.na).length;
+    const pneed = phase.tasks.length - pna;
+    const pd = phase.tasks.filter(t => t.done && !t.na).length;
     const vis = phase.tasks.filter(t => filter === "All" || t.who === filter || t.who === "Both");
     const sec = document.createElement("section");
     sec.innerHTML = `
@@ -348,20 +424,28 @@ function renderList() {
         <span class="pnum">${String(pi).padStart(2,"0")}</span>
         <h2>${esc(phase.name)}</h2>
         <span class="pdates">${esc(phase.dates)}</span>
-        <span class="pcount ${pd === phase.tasks.length && phase.tasks.length ? "full":""}">${pd}/${phase.tasks.length}</span>
+        <span class="pcount ${pd === pneed && pneed > 0 ? "full":""}">${pd}/${pneed}${pna ? " · " + pna + " n/a" : ""}</span>
       </div>
       <ul class="tasks">
         ${vis.map(t => {
           const bits = [];
+          if (t.na) bits.push("not necessary");
           if (t.items.length) bits.push(t.items.length + (t.items.length === 1 ? " entry" : " entries"));
           if (t.notes.trim()) bits.push("notes");
+          const idx = phase.tasks.indexOf(t);
+          const cbTxt = t.na ? "–" : (t.done ? "✓" : "");
           return `
-          <li class="task ${t.done ? "done":""}" data-p="${phase.id}" data-t="${t.id}">
-            <button class="cb" aria-label="${t.done ? "Mark not done":"Mark done"}">${t.done ? "✓":""}</button>
+          <li class="task ${t.done && !t.na ? "done":""} ${t.na ? "na":""}" data-p="${phase.id}" data-t="${t.id}">
+            <button class="cb" aria-label="Toggle status">${cbTxt}</button>
             <div class="txtwrap" title="Open details">
               <div class="txt">${esc(t.text)}</div>
               ${bits.length ? `<div class="meta">${bits.join(" · ")} ›</div>` : `<div class="meta" style="color:var(--muted);font-weight:400">tap to add details ›</div>`}
             </div>
+            ${filter === "All" ? `
+            <div class="mv">
+              <button class="up" ${idx === 0 ? "disabled":""} title="Move up" aria-label="Move up">▲</button>
+              <button class="dn" ${idx === phase.tasks.length - 1 ? "disabled":""} title="Move down" aria-label="Move down">▼</button>
+            </div>` : ""}
             <button class="who ${t.who}" title="Click to reassign">${t.who}</button>
             <button class="del" aria-label="Delete task" title="Delete">×</button>
           </li>`;
@@ -394,8 +478,11 @@ function renderDetail(pid, tid) {
     <div class="d-eyebrow">${esc(p.name)} · ${esc(p.dates)}</div>
     <input class="d-title" id="dTitle" value="${esc(t.text)}" aria-label="Task title (editable)" />
     <div class="d-status">
-      <button class="cb ${t.done ? "on":""}" id="dDone" style="${t.done ? "border-color:var(--green);background:var(--green);":""}">${t.done ? "✓":""}</button>
-      <span class="statlbl">${t.done ? "Done" : "Not done yet"}</span>
+      <div class="seg" role="group" aria-label="Status">
+        <button class="s-open ${!t.done && !t.na ? "on":""}" data-s="open">Open</button>
+        <button class="s-done ${t.done && !t.na ? "on":""}" data-s="done">Done</button>
+        <button class="s-na ${t.na ? "on":""}" data-s="na">Not necessary</button>
+      </div>
       <button class="who ${t.who}" id="dWho" title="Click to reassign">${t.who}</button>
     </div>
 
@@ -429,7 +516,12 @@ function renderDetail(pid, tid) {
   document.getElementById("backBtn").onclick = () => { location.hash = ""; };
   document.getElementById("dTitle").addEventListener("input", e => { t.text = e.target.value; saveDebounced(); });
   document.getElementById("dNotes").addEventListener("input", e => { t.notes = e.target.value; saveDebounced(); });
-  document.getElementById("dDone").onclick = () => { t.done = !t.done; save(); render(); };
+  document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+    const s = b.dataset.s;
+    t.done = (s === "done");
+    t.na = (s === "na");
+    save(); render();
+  });
   document.getElementById("dWho").onclick = () => { t.who = CYCLE[t.who]; save(); render(); };
   document.getElementById("eAdd").onclick = () => {
     const name = document.getElementById("eName").value.trim();
@@ -463,7 +555,20 @@ document.getElementById("app").addEventListener("click", e => {
   if (li) {
     const { p, t } = findTask(li.dataset.p, li.dataset.t);
     if (!t) return;
-    if (e.target.classList.contains("cb")) { t.done = !t.done; save(); render(); return; }
+    if (e.target.classList.contains("cb")) {
+      if (t.na) { t.na = false; }
+      else { t.done = !t.done; }
+      save(); render(); return;
+    }
+    if (e.target.closest(".mv")) {
+      const dir = e.target.classList.contains("up") ? -1 : 1;
+      const i = p.tasks.indexOf(t), j = i + dir;
+      if (j >= 0 && j < p.tasks.length) {
+        [p.tasks[i], p.tasks[j]] = [p.tasks[j], p.tasks[i]];
+        save(); render();
+      }
+      return;
+    }
     if (e.target.classList.contains("who")) { t.who = CYCLE[t.who]; save(); render(); return; }
     if (e.target.classList.contains("del")) { p.tasks = p.tasks.filter(x => x !== t); save(); render(); return; }
     if (e.target.closest(".txtwrap")) { location.hash = "t/" + p.id + "/" + t.id; return; }
@@ -478,7 +583,7 @@ function addTask(pid) {
   const text = input.value.trim();
   if (!text) return;
   const p = state.phases.find(x => x.id === pid);
-  p.tasks.push({ id: pid + "-" + Date.now(), text, who: "Both", done: false, notes: "", items: [] });
+  p.tasks.push({ id: pid + "-" + Date.now(), text, who: "Both", done: false, na: false, notes: "", items: [] });
   save(); render();
   const again = document.querySelector(`input[data-add="${pid}"]`);
   if (again) again.focus();
@@ -515,6 +620,25 @@ document.getElementById("importFile").addEventListener("change", e => {
   };
   r.readAsText(f);
   e.target.value = "";
+});
+
+// ── Date editor ──────────────────────────────────────────────────────
+document.getElementById("editDatesBtn").addEventListener("click", () => {
+  const ed = document.getElementById("dateEditor");
+  const open = ed.style.display === "flex";
+  if (!open) {
+    document.getElementById("inKeys").value = state.dates.keys;
+    document.getElementById("inMove").value = state.dates.move;
+  }
+  ed.style.display = open ? "none" : "flex";
+});
+document.getElementById("dateDone").addEventListener("click", () => {
+  const k = document.getElementById("inKeys").value;
+  const m = document.getElementById("inMove").value;
+  if (k) state.dates.keys = k;
+  if (m) state.dates.move = m;
+  document.getElementById("dateEditor").style.display = "none";
+  save(); renderHeader();
 });
 
 // ── PWA install prompt ───────────────────────────────────────────────
